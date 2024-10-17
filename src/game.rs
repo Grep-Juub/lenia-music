@@ -1,11 +1,10 @@
 use sdl2::pixels::Color;
-use sdl2::video::Window;
 use rand::{Rng, rngs::StdRng, SeedableRng};
 use rayon::prelude::*;
 use std::time::{Instant, Duration};
 use colorgrad::{self, Gradient};
 use colorgrad::preset::{viridis, inferno, plasma, magma, rainbow};
-use crate::utils::{growth};
+use crate::utils::growth;
 
 pub const DEFAULT_PIXEL_EDGE_SIZE: u32 = 5;
 pub const DEFAULT_UPDATE_FREQ: f64 = 10.0;
@@ -36,7 +35,6 @@ pub struct GameOfLife {
     pub info_bar_height: u32,
     pub gradient_idx: usize,
     pub gradients: Vec<Box<dyn Gradient>>,
-    pub info_window: Option<Window>,
     pub mouse_down: bool, // Track if mouse button is held down
     pub noise_intensity: f64,
     pub noise_enabled: bool,
@@ -87,11 +85,11 @@ impl GameOfLife {
             noise_intensity: DEFAULT_NOISE_INTENSITY,
             gradient_idx: 0,
             gradients,
-            info_window: None,
             mouse_down: false,
             noise_enabled: true,
         }
     }
+
 
     fn compute_colors(gradient: &dyn Gradient) -> Vec<Color> {
         (0..=255)
@@ -100,6 +98,10 @@ impl GameOfLife {
                 Color::RGBA(c[0], c[1], c[2], 255)
             })
             .collect()
+    }
+
+    pub fn toggle_info_overlay(&mut self) {
+        self.overlay_visible = !self.overlay_visible;
     }
 
     pub fn update(&mut self) {
@@ -222,21 +224,6 @@ impl GameOfLife {
     pub fn switch_gradient(&mut self) {
         self.gradient_idx = (self.gradient_idx + 1) % self.gradients.len();
         self.colors = Self::compute_colors(self.gradients[self.gradient_idx].as_ref());
-    }
-
-    pub fn toggle_info_window(&mut self, video_subsystem: &sdl2::VideoSubsystem) {
-        if let Some(_info_window) = &self.info_window {
-            self.info_window = None;
-        } else {
-            let info_window = video_subsystem
-                .window("Simulation Info", 500, 400)
-                .position_centered()
-                .build()
-                .unwrap();
-
-            let info_canvas = info_window.into_canvas().build().unwrap();
-            self.info_window = Some(info_canvas.into_window());
-        }
     }
 
     pub fn toggle_noise(&mut self) {
