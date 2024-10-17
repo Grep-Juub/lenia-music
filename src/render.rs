@@ -4,6 +4,8 @@ use sdl2::video::Window;
 use sdl2::rect::Rect;
 use sdl2::ttf::Font;
 use sdl2::gfx::primitives::DrawRenderer;
+use sdl2::mouse::MouseButton;
+use sdl2::event::Event;
 use crate::game::GameOfLife;
 
 impl GameOfLife {
@@ -35,7 +37,7 @@ impl GameOfLife {
         canvas.present();
     }
 
-    pub fn update_info_window(&self, font: &Font) {
+    pub fn update_info_window(&mut self, font: &Font) {
         if let Some(info_window) = &self.info_window {
             let mut info_canvas = info_window.clone().into_canvas().build().unwrap();
             info_canvas.set_draw_color(Color::RGB(20, 20, 20));
@@ -45,16 +47,6 @@ impl GameOfLife {
             let text_lines = vec![
                 format!("FPS: {:.2}", self.fps),
                 format!("Generation: {}", self.generation),
-                format!("Pixel Size: {}", self.pixel_edge_size),
-                format!("Update Frequency: {:.2}", self.update_freq),
-                format!("Kernel Radius: {}", self.kernel_rad),
-                format!("Bell M: {:.2}", self.bell_m),
-                format!("Bell S: {:.2}", self.bell_s),
-                format!("Smooth Edges: {}", if self.smooth_edges { "On" } else { "Off" }),
-                format!("Gradient Index: {}", self.gradient_idx + 1),
-                format!("Running: {}", if self.running { "Yes" } else { "No" }),
-                format!("Noise Enabled: {}", if self.noise_enabled { "Yes" } else { "No" }),
-                format!("Noise Intensity: {:.2}", self.noise_intensity),
             ];
 
             let mut y_offset = 10;
@@ -74,7 +66,72 @@ impl GameOfLife {
                 y_offset += line_height;
             }
 
+            // Adding sliders for adjusting parameters
+            self.draw_slider(&mut info_canvas, &font, "Update Frequency", self.update_freq as f32, 1.0, 100.0, y_offset);
+            y_offset += line_height;
+            self.draw_slider(&mut info_canvas, &font, "Kernel Radius", self.kernel_rad as f32, 1.0, 20.0, y_offset);
+            y_offset += line_height;
+            self.draw_slider(&mut info_canvas, &font, "Bell M", self.bell_m as f32, 0.01, 1.0, y_offset);
+            y_offset += line_height;
+            self.draw_slider(&mut info_canvas, &font, "Bell S", self.bell_s as f32, 0.01, 1.0, y_offset);
+            y_offset += line_height;
+            self.draw_slider(&mut info_canvas, &font, "Noise Intensity", self.noise_intensity as f32, 0.0, 1.0, y_offset);
+
             info_canvas.present();
+        }
+    }
+
+    fn draw_slider(&self, canvas: &mut Canvas<Window>, font: &Font, label: &str, value: f32, min: f32, max: f32, y_offset: i32) {
+        let texture_creator = canvas.texture_creator();
+        let label_surface = font.render(&format!("{}: {:.2}", label, value))
+            .blended(Color::RGB(255, 255, 255))
+            .map_err(|e| e.to_string()).unwrap();
+        let label_texture = texture_creator.create_texture_from_surface(&label_surface)
+            .map_err(|e| e.to_string()).unwrap();
+
+        let label_target = Rect::new(10, y_offset, label_surface.width(), label_surface.height());
+        let _ = canvas.copy(&label_texture, None, Some(label_target));
+
+        // Draw the slider background
+        let slider_x = 200;
+        let slider_y = y_offset + 10;
+        let slider_width = 200;
+        let slider_height = 10;
+        canvas.set_draw_color(Color::RGB(100, 100, 100));
+        let _ = canvas.fill_rect(Rect::new(slider_x, slider_y, slider_width, slider_height));
+
+        // Draw the slider knob
+        let knob_x = slider_x + ((value - min) / (max - min) * slider_width as f32) as i32;
+        canvas.set_draw_color(Color::RGB(200, 200, 200));
+        let _ = canvas.fill_rect(Rect::new(knob_x - 5, slider_y - 5, 10, 20));
+    }
+
+    pub fn handle_slider_events(&mut self, event: &Event) {
+        if let Some(_info_window) = &self.info_window {
+            match *event {
+                Event::MouseButtonDown { x, y, mouse_btn: MouseButton::Left, .. } => {
+                    // Check if the click is within the slider area
+                    let slider_y_offsets = [50, 80, 110, 140, 170]; // Example y_offsets for sliders
+                    let slider_x = 200;
+                    let slider_width = 200;
+                    let slider_height = 10;
+
+                    for (i, &slider_y) in slider_y_offsets.iter().enumerate() {
+                        if y >= slider_y + 10 && y <= slider_y + 10 + slider_height && x >= slider_x && x <= slider_x + slider_width {
+                            let new_value = ((x - slider_x) as f32 / slider_width as f32).clamp(0.0, 1.0);
+                            match i {
+                                0 => self.update_freq = new_value as f64 * (100.0 - 1.0) + 1.0,
+                                1 => self.kernel_rad = (new_value as f64 * (20.0 - 1.0) + 1.0).round() as u32,
+                                2 => self.bell_m = new_value as f64 * (1.0 - 0.01) + 0.01,
+                                3 => self.bell_s = new_value as f64 * (1.0 - 0.01) + 0.01,
+                                4 => self.noise_intensity = new_value as f64 * (1.0 - 0.0) + 0.0,
+                                _ => {},
+                            }
+                        }
+                    }
+                },
+                _ => {},
+            }
         }
     }
 }

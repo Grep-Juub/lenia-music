@@ -6,6 +6,7 @@ use crate::game::GameOfLife;
 
 pub fn handle_events(event_pump: &mut EventPump, game: &mut GameOfLife, video_subsystem: &VideoSubsystem) -> bool {
     for event in event_pump.poll_iter() {
+        game.handle_slider_events(&event);
         match event {
             Event::Quit { .. } |
             Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
@@ -60,10 +61,10 @@ pub fn handle_events(event_pump: &mut EventPump, game: &mut GameOfLife, video_su
                 game.change_parameter("bell_s", -0.001);
             },
             Event::KeyDown { keycode: Some(Keycode::F9), .. } => {
-                game.change_parameter("info_bar_height", 5.0);
+                game.change_parameter("noise_intensity", 0.01);
             },
             Event::KeyDown { keycode: Some(Keycode::F10), .. } => {
-                game.change_parameter("info_bar_height", -5.0);
+                game.change_parameter("noise_intensity", -0.01);
             },
             Event::MouseButtonDown { mouse_btn, x, y, .. } => {
                 game.mouse_down = true;
